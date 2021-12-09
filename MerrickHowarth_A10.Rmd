@@ -1,7 +1,7 @@
 ---
-title: "218X Final Assignment Draft"
+title: "218X Final Assignment"
 author: "Merrick Howarth"
-date: "Dec. 5, 2021"
+date: "Dec. 9, 2021"
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -11,16 +11,20 @@ editor_options:
 knitr::opts_chunk$set(echo = F, warning = F, message = F)
 ```
 
-Bellow I have many of the graphs I intend to include in my project. Looking towards a final design I will be adding:
+# Greenspace and Mental Health
 
-  - a written analysis alongside the figures
-  - a layer to the map which is shaded for proportion of park area
-  - a shift of the race equity plot to a gg plot, though I am having problems with legend placement
-  - a buffer analysis of park location in San Francisco. Note I have switch my scope to only analyzing San Francisco because if I add this element of analysis I only have the park location data for San Francisco.
-  
-I am also considering adding another graph but cannot decide where to effectively add one.
 
-It has also occurred to me that cultural neighborhoods may be a confounding variable in my analysis, but I am not sure if that is something that can be influenced.
+Many studies have shown the benefits of nature exposure on mental health through a variety of indicators which primarily fall into two categories: direct exposure to nature and indirect exposure to nature. Direct exposure to nature involves time people choose to spend outside. Indirect exposure involves time spent near nature, be it in the form of house plants or larger scale impactors like nearby park area. In my research this quarter, I have spent time using park features of tracts as an indicator for indirect exposure on mental health. While my research considers tracts nationally, below I conduct a case study analysis of park prevelance in tracts in San Francisco to evaluate the effectiveness of the indicator and to see if equity impacts this indicator. 
+
+
+## Mapping the Data
+
+The data which I am considering features park information as recent as 2018, but does in turn seem to rely on 2010 tracts. 
+
+While I have selected 2019 American Community Survey data for my equity analysis, I wanted to confirm that if data was applied on more recent tracts, there was no potential for boundary issues. As shown below, I mapped both 2010 and 2020 census tracts, in blue and red respectively, and on visual inspection, the boundaries seem the same. This is affirmed by numeric evaluation as a comparison of tract areas leads to no differences. 
+
+I additionally felt it was pertinent to give a visual sense of the data regarding park features that I am working with. To this end, I chose to focus on the proportion of tract area which is park both in my analysis and visualization which can be seen in the other map layer below. 
+
 
 ```{r, libraries}
 
@@ -51,7 +55,7 @@ park_data_10 <- read_csv("data/nanda_parks_tract_2018_01P.csv") %>%
 sf_parks <- left_join(sf_tracts_10,park_data_10) %>% rename(tract = TRACTCE)
 
 
-# identifying park proportion quartiles for san fracisco tracts
+# identifying park Proportion quartiles for san fracisco tracts
 propPark_Qs <- quantile(sf_parks$propPark, na.rm = T)
 
 sf_parks <- sf_parks %>%
@@ -68,12 +72,14 @@ sf_parks <- sf_parks %>%
 
 ```
 
-I believe the park data I am using is tied to 2010 tracts even though it is from 2018, so I wanted to prove the tracts were the same before using data interchangeably with 2010 and 2020 tracts. The area differential between these two tracts is 0 m^2 .
-
 
 ```{r, show tracts are same}
 sf_tracts_20 <- tracts("CA", "San Francisco", 2020)
 
+absolute_pal <- colorNumeric(
+  palette = "RdYlGn",
+  domain = c(0,1)
+)
 
 leaflet() %>% 
   addProviderTiles(providers$CartoDB.Positron) %>% 
@@ -81,7 +87,8 @@ leaflet() %>%
     data = sf_tracts_10,
     stroke = T,
     opacity = 0.5,
-    fill = F
+    fill = F,
+    group = "Boundry Comparison"
   ) %>% 
   addPolygons(
     data = sf_tracts_20,
@@ -89,8 +96,31 @@ leaflet() %>%
     stroke = T,
     opacity = 0.5,
     weight = 1,
-    fill = F
-  )
+    fill = F,
+    group = "Boundry Comparison"
+  )%>% 
+  # adding Proportion of park shading
+  addPolygons(
+    data = sf_parks,
+    fillColor = ~absolute_pal(sf_parks$propPark),
+    label = ~round(sf_parks$propPark,2),
+    color = "grey",
+    opacity = 0.5,
+    fillOpacity = 0.5,
+    weight = 1,
+    group = "Proportion of Park"
+  )%>%
+  addLegend(
+    pal = absolute_pal,
+    value = c(0,1),
+    title = "Proportion of Park \n Area to Tract Area"
+  ) %>% 
+  addLayersControl(
+    baseGroups = c("Boundry Comparison","Proportion of Park"),
+    options = layersControlOptions(
+      collapsed = F
+    ))
+
 
 
 area_check <- sf_tracts_10 %>% 
@@ -107,10 +137,16 @@ area_check <- sf_tracts_10 %>%
 
 tract_area_dif <- sum(area_check$delta)
   
-# add quartile layer?
+
 ```
 
+The map above highlights what may prove to be a significant detriment to using park features contained in tracts as an indicator: failure to consider proximity to other park areas. Tracts which boarder the large Golden Gate Park bear similar to worse park proportions when compared to some park sparse tracts in the Mission District. While this issue primarily only presents itself in consideration of large park areas, like Golden Gate Park, it is not a negligible issue.
 
+
+
+## Equity Analysis
+
+After visualizing the park data, I wanted to perform an equity for access to parks with consideration of race and income. For the analysis, I broke the tract park proportions across all of the San Francisco tracts into quartiles in order to analyse equity at essentially four different levels of nature exposure. The analysis plots can be seen below.
 
 ```{r, tract_income}
 
@@ -127,9 +163,9 @@ census_race_categories <-
   c(
     "White Alone",
     "Black or African American",
-    "American Indian and Alaska Native Alone",
+    "American Indian and \n Alaska Native Alone",
     "Asian Alone",
-    "Native Hawaiian and Other Pacific Islander Alone",
+    "Native Hawaiian and \n Other Pacific Islander Alone",
     "Some Other Race Alone",
     "Two or More Races"
   )
@@ -148,7 +184,7 @@ sf_income_race_parkQ <-
       pivot_longer(
         ends_with("E"),
         names_to = "name",
-        values_to = "estimate"
+        values_to = "Proportion"
       ) %>%
       left_join(
         acs_vars_2019_5yr %>% 
@@ -182,18 +218,18 @@ sf_income_race_parkQ <- sf_income_race_parkQ %>% arrange(desc(propPark_Q))
 sf_race_total <-
   sf_income_race_parkQ %>% 
   group_by(race) %>% 
-  summarize(estimate = sum(estimate)) %>% 
+  summarize(Proportion = sum(Proportion)) %>% 
   mutate(income = "Total Pop.", propPark_Q = "Total Pop.") 
 
 sf_park_race_gg <- sf_income_race_parkQ %>% 
   group_by(propPark_Q, race) %>% 
-  summarize(estimate = sum(estimate)) %>% 
+  summarize(Proportion = sum(Proportion)) %>% 
   rbind(sf_race_total) %>% 
   ggplot() +
   geom_bar(
     aes(
       x = propPark_Q %>% factor(levels = rev(c("Total Pop.",unique(sf_income_race_parkQ$propPark_Q)))),
-      y = estimate,
+      y = Proportion,
       fill = race %>% factor(levels = rev(unique(sf_income_race_parkQ$race)))
     ),
     stat = "identity",
@@ -204,16 +240,16 @@ sf_park_race_gg <- sf_income_race_parkQ %>%
     y = "Proportion of households",
     title = "San Francisco Park Proportion of Tract by Race",
     fill = "Race of householder"
-  ) +
-  coord_flip() +
-  theme(
-    legend.position = "bottom",
-    legend.direction = "vertical"
-  )
+  ) #+
+  #coord_flip() +
+  # theme(
+  #   legend.position = "bottom",
+  #   legend.direction = "vertical"
+  # )
 
 sf_park_race <- ggplotly(sf_park_race_gg, tooltip="y") %>% layout(legend = list(x = 200, y = 0.5))
 
-sf_park_race_gg
+sf_park_race
 
 ```
 
@@ -223,19 +259,19 @@ sf_park_race_gg
 sf_income_total <-
   sf_income_race_parkQ %>% 
   group_by(income) %>% 
-  summarize(estimate = sum(estimate)) %>% 
+  summarize(Proportion = sum(Proportion)) %>% 
   mutate(race = "Total Pop.", propPark_Q = "Total Pop.") 
 
 
 sf_park_income_gg <- sf_income_race_parkQ %>% 
   group_by(propPark_Q, income) %>% 
-  summarize(estimate = sum(estimate)) %>% 
+  summarize(Proportion = sum(Proportion)) %>% 
   rbind(sf_income_total) %>% 
   ggplot() +
   geom_bar(
     aes(
       x = propPark_Q %>% factor(levels = rev(c("Total Pop.",unique(sf_income_race_parkQ$propPark_Q)))),
-      y = estimate,
+      y = Proportion,
       fill = income %>% factor(levels = rev(unique(sf_income_race_parkQ$income)))
     ),
     stat = "identity",
@@ -253,4 +289,71 @@ sf_park_income <- ggplotly(sf_park_income_gg, tooltip="y")
 sf_park_income
 
 ```
+
+
+```{r, equity plot income}
+# mutate to larger buckets for cleaner plot
+sf_income_race_parkQ <- sf_income_race_parkQ %>%
+  mutate(
+    income1 = income,
+    income = case_when(
+      
+      income == "Less than $10,000" | income == "$10,000 to $14,999" |  
+        income == "$15,000 to $19,999" 
+      ~ "Less than $19,999",
+      
+      income == "$20,000 to $24,999" | income == "$25,000 to $29,999" |  
+        income == "$30,000 to $34,999" | income == "$35,000 to $39,999"
+      ~ "$20,000 to $39,999",
+      
+      income == "$40,000 to $44,999" | income == "$45,000 to $49,999" |  
+        income == "$50,000 to $59,999"
+      ~ "$40,000 to $59,999",
+      
+      TRUE ~ income,
+      
+      
+    )
+      
+  )
+
+
+sf_income_total <-
+  sf_income_race_parkQ %>% 
+  group_by(income) %>% 
+  summarize(Proportion = sum(Proportion)) %>% 
+  mutate(race = "Total Pop.", propPark_Q = "Total Pop.") 
+
+
+sf_park_income_gg <- sf_income_race_parkQ %>% 
+  group_by(propPark_Q, income) %>% 
+  summarize(Proportion = sum(Proportion)) %>% 
+  rbind(sf_income_total) %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = propPark_Q %>% factor(levels = rev(c("Total Pop.",unique(sf_income_race_parkQ$propPark_Q)))),
+      y = Proportion,
+      fill = income %>% factor(levels = rev(unique(sf_income_race_parkQ$income)))
+    ),
+    stat = "identity",
+    position = "fill"
+  ) +
+  labs(
+    x = "Park Quartile",
+    y = "Proportion of Households",
+    title = "San Francisco Park Proportion of Tract by Household Income",
+    fill = "Household Income Bracket"
+  ) 
+
+sf_park_income <- ggplotly(sf_park_income_gg, tooltip="y")
+
+sf_park_income
+
+```
+
+Ultimately, it can be easily seen that tract contained park features are an inadequate indicator for capturing park access and an in depth proximity analysis is needed for having a chance at drawing significant conclusions regarding equity and in my own research mental health. This presents a significant challenge as I continue my research as more precise geospatial park data is limited on a national scale. In future analysis, I may create another midpoint indicator which applies a buffer analysis to the tracts themselves, in order to capture the park information of adjacent tract in a larger park access score.
+
+
+
 
