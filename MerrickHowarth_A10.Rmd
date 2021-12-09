@@ -17,11 +17,9 @@ knitr::opts_chunk$set(echo = F, warning = F, message = F)
 Many studies have shown the benefits of nature exposure on mental health through a variety of indicators which primarily fall into two categories: direct exposure to nature and indirect exposure to nature. Direct exposure to nature involves time people choose to spend outside. Indirect exposure involves time spent near nature, be it in the form of house plants or larger scale impactors like nearby park area. In my research this quarter, I have spent time using park features of tracts as an indicator for indirect exposure on mental health. While my research considers tracts nationally, below I conduct a case study analysis of park prevelance in tracts in San Francisco to evaluate the effectiveness of the indicator and to see if equity impacts this indicator. 
 
 
-## Mapping the Data
+### Mapping the Data
 
-The data which I am considering features park information as recent as 2018, but does in turn seem to rely on 2010 tracts. 
-
-While I have selected 2019 American Community Survey data for my equity analysis, I wanted to confirm that if data was applied on more recent tracts, there was no potential for boundary issues. As shown below, I mapped both 2010 and 2020 census tracts, in blue and red respectively, and on visual inspection, the boundaries seem the same. This is affirmed by numeric evaluation as a comparison of tract areas leads to no differences. 
+The data which I am considering features park information as recent as 2018, but does in turn seem to rely on 2010 tracts. While I have selected 2019 American Community Survey data for my equity analysis, I wanted to confirm that if data was applied on more recent tracts, there was no potential for boundary issues. As shown below, I mapped both 2010 and 2020 census tracts, in blue and red respectively, and on visual inspection, the boundaries seem the same. This is affirmed by numeric evaluation as a comparison of tract areas leads to no differences. 
 
 I additionally felt it was pertinent to give a visual sense of the data regarding park features that I am working with. To this end, I chose to focus on the proportion of tract area which is park both in my analysis and visualization which can be seen in the other map layer below. 
 
@@ -144,9 +142,9 @@ The map above highlights what may prove to be a significant detriment to using p
 
 
 
-## Equity Analysis
+### Equity Analysis
 
-After visualizing the park data, I wanted to perform an equity for access to parks with consideration of race and income. For the analysis, I broke the tract park proportions across all of the San Francisco tracts into quartiles in order to analyse equity at essentially four different levels of nature exposure. The analysis plots can be seen below.
+After visualizing the park data, I wanted to perform an equity analysis for access to parks with consideration of race and income. For the analysis, I broke the tract park proportions across all of the San Francisco tracts into quartiles in order to analyse equity at essentially four different levels of park access, with 1 being lowest (worst) and 4 being highest (best). The equity analysis plots can be seen below.
 
 ```{r, tract_income}
 
@@ -256,59 +254,61 @@ sf_park_race
 
 ```{r, equity plot income}
 
-sf_income_total <-
-  sf_income_race_parkQ %>% 
-  group_by(income) %>% 
-  summarize(Proportion = sum(Proportion)) %>% 
-  mutate(race = "Total Pop.", propPark_Q = "Total Pop.") 
-
-
-sf_park_income_gg <- sf_income_race_parkQ %>% 
-  group_by(propPark_Q, income) %>% 
-  summarize(Proportion = sum(Proportion)) %>% 
-  rbind(sf_income_total) %>% 
-  ggplot() +
-  geom_bar(
-    aes(
-      x = propPark_Q %>% factor(levels = rev(c("Total Pop.",unique(sf_income_race_parkQ$propPark_Q)))),
-      y = Proportion,
-      fill = income %>% factor(levels = rev(unique(sf_income_race_parkQ$income)))
-    ),
-    stat = "identity",
-    position = "fill"
-  ) +
-  labs(
-    x = "Park Quartile",
-    y = "Proportion of Households",
-    title = "San Francisco Park Proportion of Tract by Household Income",
-    fill = "Household Income Bracket"
-  ) 
-
-sf_park_income <- ggplotly(sf_park_income_gg, tooltip="y")
-
-sf_park_income
+# sf_income_total <-
+#   sf_income_race_parkQ %>% 
+#   group_by(income) %>% 
+#   summarize(Proportion = sum(Proportion)) %>% 
+#   mutate(race = "Total Pop.", propPark_Q = "Total Pop.") 
+# 
+# 
+# sf_park_income_gg <- sf_income_race_parkQ %>% 
+#   group_by(propPark_Q, income) %>% 
+#   summarize(Proportion = sum(Proportion)) %>% 
+#   rbind(sf_income_total) %>% 
+#   ggplot() +
+#   geom_bar(
+#     aes(
+#       x = propPark_Q %>% factor(levels = rev(c("Total Pop.",unique(sf_income_race_parkQ$propPark_Q)))),
+#       y = Proportion,
+#       fill = income %>% factor(levels = rev(unique(sf_income_race_parkQ$income)))
+#     ),
+#     stat = "identity",
+#     position = "fill"
+#   ) +
+#   labs(
+#     x = "Park Quartile",
+#     y = "Proportion of Households",
+#     title = "San Francisco Park Proportion of Tract by Household Income",
+#     fill = "Household Income Bracket"
+#   ) 
+# 
+# sf_park_income <- ggplotly(sf_park_income_gg, tooltip="y")
+# 
+# sf_park_income
 
 ```
 
 
-```{r, equity plot income}
+```{r, equity plot income dif buckets}
 # mutate to larger buckets for cleaner plot
 sf_income_race_parkQ <- sf_income_race_parkQ %>%
   mutate(
     income1 = income,
     income = case_when(
       
-      income == "Less than $10,000" | income == "$10,000 to $14,999" |  
-        income == "$15,000 to $19,999" 
-      ~ "Less than $19,999",
+      income == "Less than $10,000" | income == "$10,000 to $14,999"  
+      ~ "Less than $15,000",
       
-      income == "$20,000 to $24,999" | income == "$25,000 to $29,999" |  
-        income == "$30,000 to $34,999" | income == "$35,000 to $39,999"
-      ~ "$20,000 to $39,999",
+      income == "$15,000 to $19,999" | income == "$20,000 to $24,999" | 
+        income == "$25,000 to $29,999" 
+      ~ "$15,000 to $29,999",
       
-      income == "$40,000 to $44,999" | income == "$45,000 to $49,999" |  
-        income == "$50,000 to $59,999"
-      ~ "$40,000 to $59,999",
+      income == "$30,000 to $34,999" | income == "$35,000 to $39,999" |
+        income == "$40,000 to $44,999"
+      ~ "$30,000 to $44,999",
+      
+      income == "$45,000 to $49,999" | income == "$50,000 to $59,999"
+      ~ "$45,000 to $59,999",
       
       TRUE ~ income,
       
@@ -343,7 +343,7 @@ sf_park_income_gg <- sf_income_race_parkQ %>%
     x = "Park Quartile",
     y = "Proportion of Households",
     title = "San Francisco Park Proportion of Tract by Household Income",
-    fill = "Household Income Bracket"
+    fill = "Household Income"
   ) 
 
 sf_park_income <- ggplotly(sf_park_income_gg, tooltip="y")
@@ -352,7 +352,14 @@ sf_park_income
 
 ```
 
-Ultimately, it can be easily seen that tract contained park features are an inadequate indicator for capturing park access and an in depth proximity analysis is needed for having a chance at drawing significant conclusions regarding equity and in my own research mental health. This presents a significant challenge as I continue my research as more precise geospatial park data is limited on a national scale. In future analysis, I may create another midpoint indicator which applies a buffer analysis to the tracts themselves, in order to capture the park information of adjacent tract in a larger park access score.
+Considering the equity analysis plots above, two main conclusions come to mind. The first is regarding the racial equity plot, which prompts me to consider the influence of cultural neighborhoods. In large cities like San Francisco it is not uncommon for there to be neighborhoods with a higher concentration of different races, like Japan Town. This will lead to higher counts of these races in closely grouped tracts which may also share parks in the given neighborhood, leading to an inflation of one race at a certain park access level, which may be the case for the varied Asian populations seen in the equity plot. Drawing these conclusions requires more in depth evaluation considering different geographic boundaries and more detailed demographics data. 
+
+The other point brought to mind is emphasized by the income equity plot. In this plot it can be seen that racial distribution across park access level is nearly identical to the total San Francisco population. While this outcome is ideal, I do not expect it to be true and believe if proximity was considered, the outcome would be far less equitable. I believe this because tracts identified as lower level nature along Golden Gate Park, where property value is high, would have higher nature accessibility through proximity. It is interesting that even with a poor indicator, in the extreme case of nature access level 1 (the lowest access level) some income inequity can be seen as there is a higher proportion of low incomes and a lower proportion of high incomes, this problem would likely only be exacerbated when considering proximity.
+
+
+### Conclusions
+
+Ultimately, it can be easily seen that tract contained park features are an inadequate indicator for capturing park access and an in depth proximity analysis is needed for having a chance at drawing significant conclusions regarding equity and in my own mental health research. This presents a significant challenge as I continue my research as more precise geospatial park data is limited on a national scale. In future analysis, I may create another midpoint indicator which applies a buffer analysis to the tracts themselves, in order to capture the park information of adjacent tracts in a larger park access score.
 
 
 
